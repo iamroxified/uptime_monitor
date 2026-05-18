@@ -12,12 +12,10 @@ Simple API for registering URLs, checking them on a schedule, storing check hist
 
 ## Setup
 
+This project includes a convenient setup script. Run this command to install dependencies, create your `.env` file, generate an application key, run migrations, and build frontend assets:
+
 ```bash
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate
-php artisan serve
+composer run setup
 ```
 
 MySQL notes:
@@ -50,6 +48,13 @@ UPTIME_CHECK_TIMEOUT=10
 Notes:
 - If `UPTIME_ALERT_EMAIL` is empty, emails are skipped.
 - Default mailer in `.env.example` is `log`, so emails will appear in `storage/logs/laravel.log` unless you configure SMTP.
+
+## Assumptions & Decisions
+
+- **MySQL**: matches typical production usage and what most interviewers expect; SQLite would also work but isn’t the default here.
+- **Database queue driver**: easiest to run anywhere without Redis; good enough for an assessment.
+- **`check_interval`**: interpreted as **minutes** between checks. A monitor is “due” when `last_checked_at <= now() - check_interval`.
+- **Downtime `threshold`**: number of **consecutive failed checks** required before marking a monitor `down` and queuing the “down” email.
 
 ## API Endpoints
 
@@ -103,6 +108,36 @@ If the monitor doesn’t exist:
 
 - Controllers are thin; monitoring logic lives in `App\Services\MonitorCheckService`.
 - `uptime_percentage` is computed from history (so it’s `null` until at least one check exists).
+
+## Run It Live (quick demo)
+
+Create a monitor (PowerShell):
+
+```powershell
+$body = @{ url = 'https://example.com'; check_interval = 1; threshold = 2 } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8000/api/monitors' -ContentType 'application/json' -Body $body
+```
+
+Force a check dispatch (without waiting for scheduler tick):
+
+```bash
+php artisan monitors:dispatch-checks
+```
+
+View history:
+
+```powershell
+Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/monitors/1/history?per_page=15' | ConvertTo-Json -Depth 10
+```
+
+## Explain It (talk track)
+
+- `routes/api.php` routes requests into `MonitorController` / `MonitorHistoryController`
+- `StoreMonitorRequest` validates inputs + applies defaults
+- `MonitorResource` / `MonitorCheckHistoryResource` shape responses
+- migrations define `monitors` + `monitor_check_histories`
+- `MonitorCheckService` performs the HTTP check and applies threshold rules (down/recovered + queued emails)
+- scheduler in `bootstrap/app.php` runs `monitors:dispatch-checks` every minute, which dispatches `CheckMonitorJob`
 
 ## Version Requirements
 
