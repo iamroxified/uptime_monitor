@@ -5,8 +5,8 @@ Simple API for registering URLs, checking them on a schedule, storing check hist
 ## Tech
 
 - Laravel (installed via `composer create-project` in this repo)
-- PHP: uses whatever your local PHP provides (this workspace is on PHP 8.2)
-- DB: SQLite by default (`database/database.sqlite`)
+- PHP 8.4+
+- DB: MySQL
 - Queue: `database` driver (jobs table)
 - Scheduler: Laravel scheduler running every minute
 
@@ -19,6 +19,10 @@ php artisan key:generate
 php artisan migrate
 php artisan serve
 ```
+
+MySQL notes:
+- Create a database named `uptime_monitor` (or update `DB_DATABASE` in `.env`).
+- Update `DB_USERNAME` / `DB_PASSWORD` to match your local MySQL.
 
 ## Queue + Scheduler (required for checks + emails)
 
@@ -100,6 +104,20 @@ If the monitor doesn’t exist:
 - Controllers are thin; monitoring logic lives in `App\Services\MonitorCheckService`.
 - `uptime_percentage` is computed from history (so it’s `null` until at least one check exists).
 
+## Version Requirements
+
+This assessment prompt asks for Laravel 13.x on PHP 8.4+.
+
+This repo currently installs on Laravel 12.x because the local environment available here is PHP 8.2.12 (Laravel 13 requires PHP 8.3+). The code is written to be compatible with Laravel 13, and upgrading is just a dependency bump once you’re on PHP 8.4+.
+
+To upgrade dependencies after installing PHP 8.4+ locally:
+
+```bash
+composer require laravel/framework:^13.0 -W
+composer update -W
+php artisan test
+```
+
 ## Tests
 
 ```bash
@@ -109,4 +127,3 @@ php artisan test
 Includes:
 - Endpoint tests for creating/listing monitors and the custom 404 message for history.
 - Service test for threshold behavior and email queuing.
-
