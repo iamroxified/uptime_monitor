@@ -46,11 +46,14 @@ class MonitorCheckService
         ])->save();
 
         if ($isUp) {
-            if ($monitor->status === 'down') {
+            $previousStatus = $monitor->status;
+
+            if ($previousStatus !== 'up') {
                 $monitor->forceFill(['status' => 'up'])->save();
+            }
+
+            if ($previousStatus === 'down') {
                 $this->sendRecoveryEmail($monitor);
-            } elseif ($monitor->status === 'pending') {
-                $monitor->forceFill(['status' => 'up'])->save();
             }
 
             return;

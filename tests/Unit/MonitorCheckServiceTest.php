@@ -28,9 +28,10 @@ class MonitorCheckServiceTest extends TestCase
 
         Mail::fake();
 
-        Http::fake([
-            '*' => Http::response('fail', 500),
-        ]);
+        Http::fakeSequence()
+            ->push('fail', 500)
+            ->push('fail', 500)
+            ->push('ok', 200);
 
         app(MonitorCheckService::class)->check($monitor->fresh());
         $this->assertSame('pending', $monitor->fresh()->status);
@@ -39,11 +40,11 @@ class MonitorCheckServiceTest extends TestCase
         $this->assertSame('down', $monitor->fresh()->status);
         Mail::assertQueued(MonitorDownMail::class, 1);
 
-        Http::fake([
-            '*' => Http::response('ok', 200),
-        ]);
-
         app(MonitorCheckService::class)->check($monitor->fresh());
+        $last = $monitor->fresh()->histories()->latest('checked_at')->first();
+        $this->assertNotNull($last);
+        $this->assertSame(200, $last->status_code);
+        $this->assertTrue($last->is_up);
         $this->assertSame('up', $monitor->fresh()->status);
         Mail::assertQueued(MonitorRecoveredMail::class, 1);
     }
