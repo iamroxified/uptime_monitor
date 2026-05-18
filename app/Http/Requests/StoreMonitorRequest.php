@@ -9,7 +9,7 @@ use Illuminate\Validation\Rule;
 class StoreMonitorRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * check to know if the users can make this request.
      */
     public function authorize(): bool
     {
